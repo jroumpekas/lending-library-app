@@ -22,6 +22,7 @@ public class UserMapper {
                 .lastName(user.getLastName())
                 .role(user.getRole())
                 .build();
+
     }
 
     // Μετατροπή từ UserInsertDTO σε User Entity (για εγγραφή)

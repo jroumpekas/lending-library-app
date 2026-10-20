@@ -57,6 +57,7 @@ public class BookMapper {
         }
         if (updateDTO.description() != null) {
             book.setDescription(updateDTO.description());
+
         }
     }
 }

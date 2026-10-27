@@ -1,34 +1,53 @@
 package com.lendinglibrary.libraryapp.security;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
+    // Απαραίτητο bean για να το κάνουμε inject στον AuthRestController
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
+        return authConfig.getAuthenticationManager();
+    }
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable()) // Απενεργοποίηση CSRF για δοκιμές REST API (Postman κλπ.)
-                .cors(withDefaults())         // Ενεργοποίηση CORS για να μιλάει με το React
+                .csrf(csrf -> csrf.disable()) // Απενεργοποίηση CSRF για REST API
+                .cors(withDefaults())         // Ενεργοποίηση CORS για το React
+                // Ορίζουμε την πολιτική ως Stateless (δεν κρατάμε session)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .anyRequest().permitAll() //Y Όλα τα υπόλοιπα ζητούν πιστοποίηση
+                        // Επιτρέπουμε σε όλους την εγγραφή και το login
+                        .requestMatchers("/api/users/register", "/api/auth/login").permitAll()
+                        // Οποιοδήποτε άλλο request απαιτεί πιστοποίηση
+                        .anyRequest().authenticated()
                 )
-                .httpBasic(withDefaults());
+                // Προσθέτουμε το JWT filter πριν από το κλασικό φίλτρο πιστοποίησης
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

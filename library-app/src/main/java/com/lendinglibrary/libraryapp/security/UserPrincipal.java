@@ -33,7 +33,7 @@ public class UserPrincipal implements UserDetails {
         return user.getUsername(); // Εδώ επιστρέφουμε το username (ή email)
     }
 
-    // Μπορούμε να προσθέσουμε και extra helperμεθόδους, π.χ. για το ID του χρήστη:
+    // Μπορούμε να προσθέσουμε και extra helper μεθόδους, π.χ. για το ID του χρήστη:
     public UUID getId() {
         return user.getId();
     }

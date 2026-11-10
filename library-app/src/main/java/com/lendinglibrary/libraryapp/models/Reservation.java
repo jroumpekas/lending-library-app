@@ -20,8 +20,8 @@ public class Reservation extends AbstractEntity { // 1. Extends AbstractEntity
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "book_copy_id", nullable = false) // 2. book_copy_id
-    private BookCopy bookCopy;
+    @JoinColumn(name = "book_id", nullable = false)
+    private Book book;
 
     @Column(name = "reserved_at", nullable = false, columnDefinition = "TIMESTAMPTZ")
     private Instant reservedAt;

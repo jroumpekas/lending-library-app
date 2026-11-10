@@ -24,10 +24,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        String path = request.getServletPath();
-
-        return path.startsWith("/api/auth/")
-                || request.getMethod().equalsIgnoreCase("OPTIONS");
+        String path = request.getRequestURI(); // Αλλαγή από getServletPath σε getRequestURI για ασφάλεια
+        return path.startsWith("/api/auth/") || request.getMethod().equalsIgnoreCase("OPTIONS");
     }
 
     @Override
@@ -38,33 +36,36 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
 
         String authHeader = request.getHeader("Authorization");
+        System.out.println(">>> JWT Filter - URI: " + request.getRequestURI() + " | Method: " + request.getMethod() + " | AuthHeader present: " + (authHeader != null));
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String jwtToken = authHeader.substring(7);
+            try {
+                String username = jwtTokenProvider.getUsernameFromJWT(jwtToken);
 
-        String jwtToken = authHeader.substring(7);
-        // Διόρθωση 1: Χρησιμοποιούμε τη μέθοδο του jwtTokenProvider
-        String username = jwtTokenProvider.getUsernameFromJWT(jwtToken);
+                if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                    UserDetails userDetails = customUserDetailsService.loadUserByUsername(username);
 
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = customUserDetailsService.loadUserByUsername(username);
+                    if (jwtTokenProvider.validateToken(jwtToken)) {
+                        UsernamePasswordAuthenticationToken authenticationToken =
+                                new UsernamePasswordAuthenticationToken(
+                                        userDetails,
+                                        null,
+                                        userDetails.getAuthorities()
+                                );
 
-            // Διόρθωση 2: Χρησιμοποιούμε το validateToken του jwtTokenProvider
-            if (jwtTokenProvider.validateToken(jwtToken)) {
-                UsernamePasswordAuthenticationToken authenticationToken =
-                        new UsernamePasswordAuthenticationToken(
-                                userDetails,
-                                null,
-                                userDetails.getAuthorities()
+                        authenticationToken.setDetails(
+                                new WebAuthenticationDetailsSource().buildDetails(request)
                         );
 
-                authenticationToken.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                );
-
-                SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+                        SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+                        System.out.println(">>> Successfully authenticated user: " + username);
+                    } else {
+                        System.out.println(">>> Token validation failed!");
+                    }
+                }
+            } catch (Exception e) {
+                System.out.println(">>> Cannot set user authentication: " + e.getMessage());
             }
         }
 
